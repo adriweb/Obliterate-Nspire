@@ -176,6 +176,13 @@ function drawLinearGradient(color1,color2)
  	-- todo with unpack(color1) and unpack(color2)
 end
 
+function bigText(gc)
+	gc:setFont("serif","b",18)
+end
+
+function normalText(gc)
+	gc:setFont("sansserif","r",12)
+end
 
 ------------------------------------------------------------------
 --                        Widget  Class                         --
@@ -642,6 +649,27 @@ function Screen:arrowKey(arrow)
 	end
 	self:invalidate()
 end
+function Screen:arrowUp()	
+	if self.focus~=0 then
+		self:getWidget():arrowKey("up")
+	end
+	self:invalidate()
+end
+
+function Screen:arrowDown()	
+	if self.focus~=0 then
+		self:getWidget():arrowKey("down")
+	end
+	self:invalidate()
+end
+
+function Screen:arrowLeft()	
+	self:invalidate()
+end
+
+function Screen:arrowRight()	
+	self:invalidate()
+end
 
 function Screen:enterKey()	
 	if self.focus~=0 then
@@ -765,6 +793,10 @@ end
 
 function on.timer()			current_screen():timer()		 end
 function on.arrowKey(arrw)	current_screen():arrowKey(arrw)  end
+function on.arrowRight()	current_screen():arrowRight()	 end
+function on.arrowUp()		current_screen():arrowUp() 		 end
+function on.arrowDown()		current_screen():arrowDown()	 end
+function on.arrowLeft()		current_screen():arrowLeft() 	 end
 function on.enterKey()		current_screen():enterKey()		 end
 function on.escapeKey()		current_screen():escapeKey()	 end
 function on.tabKey()		current_screen():tabKey()		 end
@@ -780,27 +812,72 @@ function on.mouseMove(x,y)	current_screen():mouseMove(x,y)  end
 -----GLOBALS:----
 -----------------
 
-ground = class()
-tank = class()
-weapon = class()
+Ground = class()
+Tank = class()
+Weapon = class()
 
+
+-----------------
+-----GROUND:-----
+-----------------
+
+function Ground:init(groundType)
+	
+end
+
+function Ground:paint(gc)
+	
+end
+
+-----------------
+------TANK:------
+-----------------
+
+function Tank:init(x, y)
+	
+end
+
+function Tank:paint(gc)
+	
+end
+
+-----------------
+-----WEAPON:-----
+-----------------
+
+function Weapon:init(fromTank)
+	
+end
+
+function Weapon:paint(gc)
+	
+end
+
+-----------------
+------MENU:------
+-----------------
 
 Menu = Screen()
 
 function Menu:paint(gc)
+	bigText(gc)
 	drawXCenteredString(gc,"Obliterate Nspire",8)
+	normalText(gc)
 end
 
+function Menu:arrowUp() Menu:backtabKey() end
+function Menu:arrowDown() Menu:tabKey() end
 
-playButton	=	sButton("Play", function () print("User wanna play the game") end)
-Menu:appendWidget(playButton, "41", "30")
+
+playButton	=	sButton(" Play ! ", function () print("User wanna play the game") end)
+Menu:appendWidget(playButton, "41.5", "30")
 playButton:focus()
 
-statsButton	=	sButton("Stats", function () print("User wanna see the stats") end)
-Menu:appendWidget(statsButton, "40", "50")
+statsButton	=	sButton(" Stats ", function () print("User wanna see the stats") end)
+Menu:appendWidget(statsButton, "42", "50")
 
-helpButton	=	sButton("Help", function () print("User wanna get help") end)
-Menu:appendWidget(helpButton, "41", "70")
+helpButton	=	sButton(" Help ", function () print("User wanna get help") end)
+Menu:appendWidget(helpButton, "42.5", "70")
 
 ------------------------------------------------------------------
 --                   Bindings to the on events                  --
