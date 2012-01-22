@@ -833,8 +833,12 @@ end
 ------TANK:------
 -----------------
 
-function Tank:init(x, y)
-	
+function Tank:init(x, y, team)
+	self.x = x
+	self.y = y
+	self.team = team
+	self.cannonAngle = 45 -- from 0 to 359
+	self.cannonPower = 50 -- from 0 to 100
 end
 
 function Tank:paint(gc)
@@ -846,7 +850,9 @@ end
 -----------------
 
 function Weapon:init(fromTank)
-	
+	self.fromTank = fromTank
+	self.initX = fromTank.x
+	self.initY = fromTank.y
 end
 
 function Weapon:paint(gc)
