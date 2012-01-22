@@ -788,17 +788,19 @@ weapon = class()
 Menu = Screen()
 
 function Menu:paint(gc)
-	gc:drawString("Hello Menu",10,10,"top")
+	drawXCenteredString(gc,"Obliterate Nspire",8)
 end
 
 
-bouton1	=	sButton("Essai", function () print("Bouton1 appuyé") end)
-Menu:appendWidget(bouton1, "5", "5")
+playButton	=	sButton("Play", function () print("User wanna play the game") end)
+Menu:appendWidget(playButton, "41", "30")
+playButton:focus()
 
-bouton2	=	sButton("Essai", function () print("Bouton2 appuyé") end)
-Menu:appendWidget(bouton2, "15", "15")
-bouton2:focus()
+statsButton	=	sButton("Stats", function () print("User wanna see the stats") end)
+Menu:appendWidget(statsButton, "40", "50")
 
+helpButton	=	sButton("Help", function () print("User wanna get help") end)
+Menu:appendWidget(helpButton, "41", "70")
 
 ------------------------------------------------------------------
 --                   Bindings to the on events                  --
