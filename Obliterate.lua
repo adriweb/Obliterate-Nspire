@@ -10,6 +10,13 @@
 ------------------------------------------------------------------
 --                  Overall Global Variables                    --
 ------------------------------------------------------------------
+
+platform.apilevel = "1.0"
+
+Tanks = {}
+CurrentPlayer = 1
+
+
 --
 -- Uses BetterLuaAPI : https://github.com/adriweb/BetterLuaAPI-for-TI-Nspire
 --
@@ -792,20 +799,20 @@ end
 
 
 function on.timer()			current_screen():timer()		 end
-function on.arrowKey(arrw)	current_screen():arrowKey(arrw)  end
 function on.arrowRight()	current_screen():arrowRight()	 end
 function on.arrowUp()		current_screen():arrowUp() 		 end
 function on.arrowDown()		current_screen():arrowDown()	 end
 function on.arrowLeft()		current_screen():arrowLeft() 	 end
+function on.arrowKey(arrw)	current_screen():arrowKey(arrw)  end
 function on.enterKey()		current_screen():enterKey()		 end
 function on.escapeKey()		current_screen():escapeKey()	 end
 function on.tabKey()		current_screen():tabKey()		 end
 function on.backtabKey()	current_screen():backtabKey()	 end
 function on.charIn(ch)		current_screen():charIn(ch)		 end
 function on.backspaceKey()	current_screen():backspaceKey()  end
-function on.mouseDown(x,y)	current_screen():mouseDown(x,y)	 end
-function on.mouseUp(x,y)	current_screen():mouseUp(x,y)	 end
-function on.mouseMove(x,y)	current_screen():mouseMove(x,y)  end
+function on.mouseDown(x,y)	pcall(function() current_screen():mouseDown(x,y) end)	 end
+function on.mouseUp(x,y)	pcall(function() current_screen():mouseUp(x,y) end)	 end
+function on.mouseMove(x,y)	pcall(function() current_screen():mouseMove(x,y) end)  end
 
 
 -----------------
@@ -822,11 +829,13 @@ Weapon = class()
 -----------------
 
 function Ground:init(groundType)
-	
+	self.groundType = groundType
 end
 
 function Ground:paint(gc)
-	
+    gc:setColorRGB(180,180,180)
+	gc:fillRect(0,100,320,112) --debug, todo depending on groundType.
+	gc:setColorRGB(0,0,0)
 end
 
 -----------------
@@ -836,13 +845,16 @@ end
 function Tank:init(x, y, team)
 	self.x = x
 	self.y = y
+	self.w = 12
+	self.h = 8
+	self.id = #Tanks
 	self.team = team
 	self.cannonAngle = 45 -- from 0 to 359
 	self.cannonPower = 50 -- from 0 to 100
 end
 
 function Tank:paint(gc)
-	
+	gc:fillRect(self.x, self.y, self.w, self.h)
 end
 
 -----------------
@@ -857,6 +869,60 @@ end
 
 function Weapon:paint(gc)
 	
+end
+
+
+
+
+-----------------------
+------GameScreen:------
+-----------------------
+
+GameScreen = Screen()
+
+function GameScreen:paint(gc)
+    Ground:paint(gc)
+	for _, tank in pairs(Tanks) do
+	    tank:paint(gc)
+	end	
+	gc:setColorRGB(255,255,255)
+	gc:drawString("It's " .. Tanks[CurrentPlayer].team .. "'s turn.", 1, 190, "top")
+	gc:setColorRGB(0,0,0)
+end
+
+function GameScreen:arrowUp()
+    print("arrowUp")
+end
+
+function GameScreen:arrowDown()
+    print("arrowDown")
+end
+
+function GameScreen:arrowLeft()
+    print("arrowLeft")
+end
+
+function GameScreen:arrowRight()
+    print("arrowRight")
+end
+
+function GameScreen:charIn(ch)
+    print(ch)
+end
+
+function GameScreen:escapeKey()
+    remove_screen(current_screen())
+    push_screen(Menu)
+end
+
+function GameScreen:enterKey()
+
+end
+
+function next_turn()
+    CurrentPlayer = CurrentPlayer==2 and 1 or 2
+    print("Current player is now " .. CurrentPlayer)
+    return Tanks[CurrentPlayer]
 end
 
 -----------------
@@ -875,7 +941,7 @@ function Menu:arrowUp() Menu:backtabKey() end
 function Menu:arrowDown() Menu:tabKey() end
 
 
-playButton	=	sButton(" Play ! ", function () print("User wanna play the game") end)
+playButton	=	sButton(" Play ! ", function () print("User wanna play the game") startGame() end)
 Menu:appendWidget(playButton, "41.5", "30")
 playButton:focus()
 
@@ -889,9 +955,9 @@ Menu:appendWidget(helpButton, "42.5", "70")
 --                   Bindings to the on events                  --
 ------------------------------------------------------------------
 
-function on.paint(gc)	
-	for _, screen in pairs(Screens) do
-		screen:draw(gc)	
+function on.paint(gc)
+	for k, screen in pairs(Screens) do
+	    screen:draw(gc)
 	end	
 end
 
@@ -903,12 +969,21 @@ function on.resize(x, y)
 end
 
 
-
 -----------------
 ----FUNCTIONS----
 -----------------
 
+function startGame()
+    print("Starting game...")
+    remove_screen(Menu)
 
+    tank1 = Tank(20,92,"Team 1")
+    tank2 = Tank(290,92,"Team 2")
+    table.insert(Tanks,1,tank1)
+    table.insert(Tanks,2,tank2)
+    
+	push_screen(GameScreen)
+end
 
 
 -----------------
@@ -916,4 +991,3 @@ end
 -----------------
 
 push_screen(Menu)
-
