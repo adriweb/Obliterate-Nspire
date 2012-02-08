@@ -1,10 +1,14 @@
--- Obliterate Nspire
--- Adriweb 2012
+----------------------
+---Obliterate Nspire--
+-----Adriweb 2012-----
+----------------------------------------------------------
 -- "Obliterate" name from Kerm Martian (Cemetech.net)
 -- TI-Planet.org and Inspired-Lua.org
 -- BetterLuaAPI by Adriweb
 -- Screen Manager by Levak
--- Screen Additions and Widgets by Jim Bauwens
+-- Screen Manager Additions 
+--             with Widgets by Jim Bauwens
+----------------------------------------------------------
 
 
 ------------------------------------------------------------------
@@ -237,9 +241,7 @@ function Widget:arrowKey(key)end
 function Widget:mouseDown(x, y) end
 function Widget:mouseUp(x, y) end
 function Widget:mouseMove(x, y) end
-function Widget:enterKey() 
-	self.parent:switchFocus(1)
-end
+function Widget:enterKey() 	self.parent:switchFocus(1) end
 function Widget:charIn() end
 function Widget:escapeKey() end
 function Widget:backspaceKey() end
@@ -248,7 +250,7 @@ function Widget:backspaceKey() end
 
 
 ------------------------------------------------------------------
---                        Sample Widget                         --
+--                          Box Widget                          --
 ------------------------------------------------------------------
 
 
@@ -542,6 +544,7 @@ sButton.mouseUp	=	sButton.enterKey
 --------------------
 ---Screen Manager---
 ----- By Levak -----
+--- with changes ---
 --------------------
 
 function Pr(n, d, s)
@@ -834,7 +837,7 @@ end
 
 function Ground:paint(gc)
     gc:setColorRGB(180,180,180)
-	gc:fillRect(0,100,320,112) --debug, todo depending on groundType.
+	gc:fillRect(0,.5*pwh(),pww(),.5*pwh()) --debug, todo depending on groundType.
 	gc:setColorRGB(0,0,0)
 end
 
@@ -849,12 +852,19 @@ function Tank:init(x, y, team)
 	self.h = 8
 	self.id = #Tanks
 	self.team = team
-	self.cannonAngle = 45 -- from 0 to 359
+	self.playing = false -- will get changed
+	self.cannonAngle = 360-45 -- from 0 to 359
 	self.cannonPower = 50 -- from 0 to 100
 end
 
 function Tank:paint(gc)
 	gc:fillRect(self.x, self.y, self.w, self.h)
+	gc:setColorRGB(255,0,0)
+	gc:drawLine(self.x+.5*self.w, self.y+.5*self.h, self.x+.5*self.w+14*math.cos(self.cannonAngle*3.14159/180), self.y+.5*self.h+14*math.sin(self.cannonAngle*3.14159/180))
+	gc:setColorRGB(0,0,0)
+	if self.playing then
+		gc:drawString("*", self.x, self.y-20, "top")
+	end
 end
 
 -----------------
@@ -886,28 +896,42 @@ function GameScreen:paint(gc)
 	    tank:paint(gc)
 	end	
 	gc:setColorRGB(255,255,255)
-	gc:drawString("It's " .. Tanks[CurrentPlayer].team .. "'s turn.", 1, 190, "top")
+	gc:drawString(Tanks[CurrentPlayer].team .. "'s turn", 1, pwh()-21, "top")
+	tmpStr = "Power : " .. Tanks[CurrentPlayer].cannonPower .. " / Angle : " .. Tanks[CurrentPlayer].cannonAngle
+	gc:drawString(tmpStr, pww()-gc:getStringWidth(tmpStr)-2, pwh()-21, "top")
 	gc:setColorRGB(0,0,0)
 end
 
 function GameScreen:arrowUp()
-    print("arrowUp")
+    print("arrowUp : Power+")
+    Tanks[CurrentPlayer].cannonPower = Tanks[CurrentPlayer].cannonPower < 100 and Tanks[CurrentPlayer].cannonPower + 1 or Tanks[CurrentPlayer].cannonPower
 end
 
 function GameScreen:arrowDown()
-    print("arrowDown")
-end
-
-function GameScreen:arrowLeft()
-    print("arrowLeft")
+    print("arrowDown : Power-")
+    Tanks[CurrentPlayer].cannonPower = Tanks[CurrentPlayer].cannonPower > 1 and Tanks[CurrentPlayer].cannonPower - 1 or Tanks[CurrentPlayer].cannonPower
 end
 
 function GameScreen:arrowRight()
-    print("arrowRight")
+    print("arrowRight : Angle+")
+    Tanks[CurrentPlayer].cannonAngle = Tanks[CurrentPlayer].cannonAngle <= 360 and Tanks[CurrentPlayer].cannonAngle + 5 or 0
+    if Tanks[CurrentPlayer].cannonAngle >= 360 then Tanks[CurrentPlayer].cannonAngle = 0 end 
+end
+
+function GameScreen:arrowLeft()
+    print("arrowLeft : Angle-")
+    Tanks[CurrentPlayer].cannonAngle = Tanks[CurrentPlayer].cannonAngle >= 0 and Tanks[CurrentPlayer].cannonAngle - 5 or 360
+	if Tanks[CurrentPlayer].cannonAngle < 0 then Tanks[CurrentPlayer].cannonAngle = 355 end 
 end
 
 function GameScreen:charIn(ch)
+	if ch == "7" then
+		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x > 0 and Tanks[CurrentPlayer].x - 10 or Tanks[CurrentPlayer].x
+	elseif ch == "9" then
+		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x < pww() and Tanks[CurrentPlayer].x + 10 or Tanks[CurrentPlayer].x
+	end
     print(ch)
+    platform.window:invalidate()
 end
 
 function GameScreen:escapeKey()
@@ -916,12 +940,15 @@ function GameScreen:escapeKey()
 end
 
 function GameScreen:enterKey()
-
+	print("enterKey pressed while in game : shooooooot ! then call next_turn() ")
+	next_turn()
 end
 
 function next_turn()
+    Tanks[CurrentPlayer].playing = false
     CurrentPlayer = CurrentPlayer==2 and 1 or 2
     print("Current player is now " .. CurrentPlayer)
+    Tanks[CurrentPlayer].playing = true
     return Tanks[CurrentPlayer]
 end
 
@@ -963,7 +990,7 @@ end
 
 function on.resize(x, y)
 	-- Global Ratio Constants for On-Calc (shouldn't be used often though...)
-	kXRatio = x/320
+	kXRatio = x/318
 	kYRatio = y/212
 	platform.window:invalidate()  -- redraw everything
 end
@@ -977,8 +1004,9 @@ function startGame()
     print("Starting game...")
     remove_screen(Menu)
 
-    tank1 = Tank(20,92,"Team 1")
-    tank2 = Tank(290,92,"Team 2")
+    tank1 = Tank(.1*pww(),98*kYRatio,"Team 1") -- hardcoded coords
+    tank1.playing = true
+    tank2 = Tank(.9*pww(),98*kYRatio,"Team 2")
     table.insert(Tanks,1,tank1)
     table.insert(Tanks,2,tank2)
     
