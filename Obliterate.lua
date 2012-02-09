@@ -853,36 +853,56 @@ function Tank:init(x, y, team)
 	self.id = #Tanks
 	self.team = team
 	self.playing = false -- will get changed
-	self.cannonAngle = 360-45 -- from 0 to 359
+	self.cannonAngle = 90 -- from 0 to 359
 	self.cannonPower = 50 -- from 0 to 100
+	self.movesLeft = 4
 end
 
 function Tank:paint(gc)
+	if self.playing then gc:setColorRGB(0,0,175) else gc:setColorRGB(0,0,0) end
 	gc:fillRect(self.x, self.y, self.w, self.h)
 	gc:setColorRGB(255,0,0)
-	gc:drawLine(self.x+.5*self.w, self.y+.5*self.h, self.x+.5*self.w+14*math.cos(self.cannonAngle*3.14159/180), self.y+.5*self.h+14*math.sin(self.cannonAngle*3.14159/180))
+    gc:drawLine(self.x+.5*self.w, self.y+.5*self.h, self.x+.5*self.w+14*math.cos((360-self.cannonAngle)*3.14159/180), self.y+.5*self.h+14*math.sin((360-self.cannonAngle)*3.14159/180))
 	gc:setColorRGB(0,0,0)
-	if self.playing then
-		gc:drawString("*", self.x, self.y-20, "top")
-	end
 end
 
 -----------------
 -----WEAPON:-----
 -----------------
 
-function Weapon:init(fromTank)
+function Weapon:init(fromTank,weapType)
 	self.fromTank = fromTank
 	self.initX = fromTank.x
 	self.initY = fromTank.y
+	self.initAngle = (fromTank.cannonAngle*math.pi/180)
+	self.v0 = fromTank.cannonPower
+	self.v0x = self.v0*math.cos(self.initAngle)
+	self.v0y = self.v0*math.sin(self.initAngle)
+	self.x = 0 -- self.initX
+	self.y = self.initY
+	self.weapType = weapType
+	self.range = self.v0*self.v0*math.sin(2*self.initAngle)/kGrav
 end
 
-function Weapon:paint(gc)
-	
+function Weapon:paint(gc)	
+    local maxHeight = self.v0y*self.v0y/(2*kGrav)
+    --print("range : ",self.range)
+    --print("maxHeight : ",maxHeight)
+    
+    gc:drawString("•", self.initX+self.x+2, self.initY-self.y-8, "top")
+    timer.start(0.01)
 end
 
+function Weapon:timer()
+    self.x = self.x + (self.range > 0 and 5 or -5)
+    self.y = self.x * math.tan(self.initAngle) - (9.81 * self.x * self.x / (2 * self.v0 * self.v0 * math.cos(self.initAngle) * math.cos(self.initAngle)))
+    if self:outOfBounds() then timer.stop() next_turn() end
+    screenRefresh()
+end
 
-
+function Weapon:outOfBounds()
+    return (self.initX+self.x+2) < 0 or (self.initX+self.x+2) > pww() or (self.initY-self.y-8) > pwh()-40
+end
 
 -----------------------
 ------GameScreen:------
@@ -894,44 +914,49 @@ function GameScreen:paint(gc)
     Ground:paint(gc)
 	for _, tank in pairs(Tanks) do
 	    tank:paint(gc)
-	end	
+	end
+	if currWeapon then
+	    currWeapon:paint(gc)
+	end
 	gc:setColorRGB(255,255,255)
 	gc:drawString(Tanks[CurrentPlayer].team .. "'s turn", 1, pwh()-21, "top")
-	tmpStr = "Power : " .. Tanks[CurrentPlayer].cannonPower .. " / Angle : " .. Tanks[CurrentPlayer].cannonAngle
-	gc:drawString(tmpStr, pww()-gc:getStringWidth(tmpStr)-2, pwh()-21, "top")
+	tmpStr1 = "Power : " .. Tanks[CurrentPlayer].cannonPower
+	tmpStr2 = "Angle : " .. Tanks[CurrentPlayer].cannonAngle
+	gc:drawString(tmpStr1, pww()-gc:getStringWidth(tmpStr1)-2, pwh()-39, "top")
+    gc:drawString(tmpStr2, pww()-gc:getStringWidth(tmpStr2)-2, pwh()-21, "top")
+    tmpStr3 = "Moves : " .. Tanks[CurrentPlayer].movesLeft
+	gc:drawString(tmpStr3, pww()*.5-gc:getStringWidth(tmpStr3)*.5+3, pwh()-21, "top")
 	gc:setColorRGB(0,0,0)
 end
 
 function GameScreen:arrowUp()
-    print("arrowUp : Power+")
     Tanks[CurrentPlayer].cannonPower = Tanks[CurrentPlayer].cannonPower < 100 and Tanks[CurrentPlayer].cannonPower + 1 or Tanks[CurrentPlayer].cannonPower
 end
 
 function GameScreen:arrowDown()
-    print("arrowDown : Power-")
     Tanks[CurrentPlayer].cannonPower = Tanks[CurrentPlayer].cannonPower > 1 and Tanks[CurrentPlayer].cannonPower - 1 or Tanks[CurrentPlayer].cannonPower
 end
 
-function GameScreen:arrowRight()
-    print("arrowRight : Angle+")
+function GameScreen:arrowLeft()
     Tanks[CurrentPlayer].cannonAngle = Tanks[CurrentPlayer].cannonAngle <= 360 and Tanks[CurrentPlayer].cannonAngle + 5 or 0
     if Tanks[CurrentPlayer].cannonAngle >= 360 then Tanks[CurrentPlayer].cannonAngle = 0 end 
 end
 
-function GameScreen:arrowLeft()
-    print("arrowLeft : Angle-")
+function GameScreen:arrowRight()
     Tanks[CurrentPlayer].cannonAngle = Tanks[CurrentPlayer].cannonAngle >= 0 and Tanks[CurrentPlayer].cannonAngle - 5 or 360
 	if Tanks[CurrentPlayer].cannonAngle < 0 then Tanks[CurrentPlayer].cannonAngle = 355 end 
 end
 
 function GameScreen:charIn(ch)
-	if ch == "7" then
+	if ch == "7" and Tanks[CurrentPlayer].movesLeft > 0 then
 		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x > 0 and Tanks[CurrentPlayer].x - 10 or Tanks[CurrentPlayer].x
-	elseif ch == "9" then
+		Tanks[CurrentPlayer].movesLeft = Tanks[CurrentPlayer].movesLeft - 1
+	elseif ch == "9"and Tanks[CurrentPlayer].movesLeft > 0 then
 		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x < pww() and Tanks[CurrentPlayer].x + 10 or Tanks[CurrentPlayer].x
+		Tanks[CurrentPlayer].movesLeft = Tanks[CurrentPlayer].movesLeft - 1
 	end
     print(ch)
-    platform.window:invalidate()
+    screenRefresh()
 end
 
 function GameScreen:escapeKey()
@@ -940,16 +965,26 @@ function GameScreen:escapeKey()
 end
 
 function GameScreen:enterKey()
-	print("enterKey pressed while in game : shooooooot ! then call next_turn() ")
-	next_turn()
+	currWeapon = Weapon(Tanks[CurrentPlayer], "essai")
+end
+
+function GameScreen:timer()
+    if currWeapon then
+        currWeapon:timer()
+    end
 end
 
 function next_turn()
+    currWeapon = nil
     Tanks[CurrentPlayer].playing = false
     CurrentPlayer = CurrentPlayer==2 and 1 or 2
     print("Current player is now " .. CurrentPlayer)
     Tanks[CurrentPlayer].playing = true
     return Tanks[CurrentPlayer]
+end
+
+function GameScreen:tabKey()
+    next_turn()
 end
 
 -----------------
@@ -978,12 +1013,13 @@ Menu:appendWidget(statsButton, "42", "50")
 helpButton	=	sButton(" Help ", function () print("User wanna get help") end)
 Menu:appendWidget(helpButton, "42.5", "70")
 
+
 ------------------------------------------------------------------
 --                   Bindings to the on events                  --
 ------------------------------------------------------------------
 
 function on.paint(gc)
-	for k, screen in pairs(Screens) do
+	for _, screen in pairs(Screens) do
 	    screen:draw(gc)
 	end	
 end
@@ -992,7 +1028,13 @@ function on.resize(x, y)
 	-- Global Ratio Constants for On-Calc (shouldn't be used often though...)
 	kXRatio = x/318
 	kYRatio = y/212
+	for _, tank in pairs(Tanks) do
+	    tank.x = tank.x*x/kXSize
+		tank.y = tank.y*y/kYSize
+    end
 	platform.window:invalidate()  -- redraw everything
+	kXSize = x
+	kYSize = y
 end
 
 
@@ -1006,7 +1048,7 @@ function startGame()
 
     tank1 = Tank(.1*pww(),98*kYRatio,"Team 1") -- hardcoded coords
     tank1.playing = true
-    tank2 = Tank(.9*pww(),98*kYRatio,"Team 2")
+    tank2 = Tank(.86*pww(),98*kYRatio,"Team 2")
     table.insert(Tanks,1,tank1)
     table.insert(Tanks,2,tank2)
     
@@ -1018,4 +1060,8 @@ end
 -----Start !-----
 -----------------
 
+mustGo = true
+kXSize = 1 -- will get changed
+kYSize = 1 -- will get changed
+kGrav = 9.81
 push_screen(Menu)
