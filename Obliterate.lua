@@ -802,10 +802,10 @@ end
 
 
 function on.timer()			current_screen():timer()		 end
-function on.arrowRight()	current_screen():arrowRight()	 end
-function on.arrowUp()		current_screen():arrowUp() 		 end
-function on.arrowDown()		current_screen():arrowDown()	 end
-function on.arrowLeft()		current_screen():arrowLeft() 	 end
+function on.arrowRight()	current_screen():arrowRight()		screenRefresh() end
+function on.arrowUp()		current_screen():arrowUp()		    screenRefresh() end
+function on.arrowDown()		current_screen():arrowDown()		screenRefresh() end
+function on.arrowLeft()		current_screen():arrowLeft()		screenRefresh() end
 function on.arrowKey(arrw)	current_screen():arrowKey(arrw)     screenRefresh() end
 function on.enterKey()		current_screen():enterKey()		    screenRefresh() end
 function on.escapeKey()		current_screen():escapeKey()	    screenRefresh() end
@@ -833,12 +833,43 @@ Weapon = class()
 
 function Ground:init(groundType)
 	self.groundType = groundType
+	self.tabley = {.55*pwh(),.6*pwh(),.65*pwh(),.5*pwh(),.55*pwh()}
+	self:generateTable()
+    print("nbr elements = ", #self.tabley)
+    self.newTable = copyTable(self.tabley)
+        for i=1,#self.tabley do
+            table.insert(self.newTable,2*i,i)
+        end
+    self.xRatio = pww()/#self.tabley
 end
 
 function Ground:paint(gc)
     gc:setColorRGB(180,180,180)
-	gc:fillRect(0,.5*pwh(),pww(),.5*pwh()) --debug, todo depending on groundType.
+	for x,y in ipairs(self.tabley) do
+	    gc:drawLine(self.xRatio*kXRatio*x,y,self.xRatio*kXRatio*x+5*kXRatio, self.tabley[x+1] and self.tabley[x+1] or self.tabley[x])
+	    --gc:drawString("*",x,y,"top")
+	    --gc:drawLine(self.xRatio*kXRatio*x,y,self.xRatio*kXRatio*x
+	end
 	gc:setColorRGB(0,0,0)
+end
+
+function Ground:generateTable()
+      for i=1, 9 do
+        for tmp=2,(#self.tabley-1 > 2 and #self.tabley-1 or 2),2 do
+            if tmp <= #self.tabley and tmp-1 > 1 then
+                table.insert(self.tabley,tmp,.5*(self.tabley[tmp-1]+self.tabley[tmp+1])+self:myRand())
+            end
+        end
+      end
+      for i=.8*#self.tabley,#self.tabley do
+          table.remove(self.tabley,i)
+      end
+end
+
+function Ground:myRand()
+    local count = #self.tabley
+    local res = 5*math.random(-1000/(math.pow(2,count*1.1-1)), 1000/(math.pow(2,count*1.1-1)))  -- the "3" might be changed.
+    return res
 end
 
 -----------------
@@ -878,7 +909,7 @@ function Weapon:init(fromTank,weapType)
 	self.v0 = fromTank.cannonPower
 	self.v0x = self.v0*math.cos(self.initAngle)
 	self.v0y = self.v0*math.sin(self.initAngle)
-	self.x = 0 -- self.initX
+	self.x = 0 -- self.x is relative to initX... That might not be a good idea for the future, but yeah.... >.>
 	self.y = self.initY
 	self.weapType = weapType
 	self.range = self.v0*self.v0*math.sin(2*self.initAngle)/kGrav
@@ -887,12 +918,12 @@ end
 
 function Weapon:paint(gc)
     gc:drawString("•", self.initX+self.x+2, self.initY-self.y-8, "top")
-    timer.start(0.01)
+    timer.start(0.04)
 end
 
 function Weapon:triche(gc)
     for tmp=0,self.range,(self.range > 0 and 5 or -5) do
-        local tmpy = tmp * math.tan(self.initAngle) - (9.81 * tmp * tmp / (2 * self.v0 * self.v0 * math.cos(self.initAngle) * math.cos(self.initAngle)))
+        local tmpy = tmp * math.tan(self.initAngle) - (kGrav * tmp * tmp / (2 * self.v0 * self.v0 * math.cos(self.initAngle) * math.cos(self.initAngle)))
         gc:drawString("°", self.initX+tmp+2, self.initY-tmpy-8, "top")
     end
 end
@@ -900,12 +931,17 @@ end
 function Weapon:timer()
     self.x = self.x + (self.range > 0 and 5 or -5)
     self.y = self.x * math.tan(self.initAngle) - (9.81 * self.x * self.x / (2 * self.v0 * self.v0 * math.cos(self.initAngle) * math.cos(self.initAngle)))
-    if self:outOfBounds() then timer.stop() next_turn() end
+    if self:outOfBounds() or self:intersectsTank(Tanks[(CurrentPlayer==2 and 1 or 2)]) then timer.stop() next_turn() end
+    
     screenRefresh()
 end
 
 function Weapon:outOfBounds()
     return (self.initX+self.x+2) < 0 or (self.initX+self.x+2) > pww() or (self.initY-self.y-8) > pwh()-40
+end
+
+function Weapon:intersectsTank(tank)
+    return math.abs((self.initX+self.x+2)-tank.x)<10 and math.abs((self.initY-self.y-8)-tank.y)<9
 end
 
 -----------------------
@@ -915,7 +951,8 @@ end
 GameScreen = Screen()
 
 function GameScreen:paint(gc)
-    Ground:paint(gc)
+    if not theGround then theGround = Ground("default") end
+    theGround:paint(gc)
 	for _, tank in pairs(Tanks) do
 	    tank:paint(gc)
 	end
@@ -957,15 +994,17 @@ end
 
 function GameScreen:charIn(ch)
 	if ch == "7" and Tanks[CurrentPlayer].movesLeft > 0 then
-		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x > 0 and Tanks[CurrentPlayer].x - 10 or Tanks[CurrentPlayer].x
+		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x > 0 and Tanks[CurrentPlayer].x - 15 or Tanks[CurrentPlayer].x
 		Tanks[CurrentPlayer].movesLeft = Tanks[CurrentPlayer].movesLeft - 1
 	elseif ch == "9" and Tanks[CurrentPlayer].movesLeft > 0 then
-		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x < pww() and Tanks[CurrentPlayer].x + 10 or Tanks[CurrentPlayer].x
+		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x < pww() and Tanks[CurrentPlayer].x + 15 or Tanks[CurrentPlayer].x
 		Tanks[CurrentPlayer].movesLeft = Tanks[CurrentPlayer].movesLeft - 1
 	elseif ch == "t" then
 	    triche = not triche
 	    tricheWeapon = Weapon(Tanks[CurrentPlayer], "tricheWeapon")
-	end
+    elseif ch == "g" then
+        theGround = Ground("default")  -- regenerating a new ground      
+    end
     screenRefresh()
 end
 
@@ -1056,9 +1095,9 @@ function startGame()
     print("Starting game...")
     remove_screen(Menu)
 
-    tank1 = Tank(.1*pww(),98*kYRatio,"Team 1") -- hardcoded coords
+    tank1 = Tank(.1*pww(),140*kYRatio,"Team 1") -- hardcoded coords
     tank1.playing = true
-    tank2 = Tank(.86*pww(),98*kYRatio,"Team 2")
+    tank2 = Tank(.86*pww(),140*kYRatio,"Team 2")
     table.insert(Tanks,1,tank1)
     table.insert(Tanks,2,tank2)
     
