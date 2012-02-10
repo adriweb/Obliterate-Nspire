@@ -806,13 +806,13 @@ function on.arrowRight()	current_screen():arrowRight()	 end
 function on.arrowUp()		current_screen():arrowUp() 		 end
 function on.arrowDown()		current_screen():arrowDown()	 end
 function on.arrowLeft()		current_screen():arrowLeft() 	 end
-function on.arrowKey(arrw)	current_screen():arrowKey(arrw)  end
-function on.enterKey()		current_screen():enterKey()		 end
-function on.escapeKey()		current_screen():escapeKey()	 end
-function on.tabKey()		current_screen():tabKey()		 end
-function on.backtabKey()	current_screen():backtabKey()	 end
-function on.charIn(ch)		current_screen():charIn(ch)		 end
-function on.backspaceKey()	current_screen():backspaceKey()  end
+function on.arrowKey(arrw)	current_screen():arrowKey(arrw)     screenRefresh() end
+function on.enterKey()		current_screen():enterKey()		    screenRefresh() end
+function on.escapeKey()		current_screen():escapeKey()	    screenRefresh() end
+function on.tabKey()		current_screen():tabKey()		    screenRefresh() end
+function on.backtabKey()	current_screen():backtabKey()	    screenRefresh() end
+function on.charIn(ch)		current_screen():charIn(ch)		    screenRefresh() end
+function on.backspaceKey()	current_screen():backspaceKey()     screenRefresh() end
 function on.mouseDown(x,y)	pcall(function() current_screen():mouseDown(x,y) end)	 end
 function on.mouseUp(x,y)	pcall(function() current_screen():mouseUp(x,y) end)	 end
 function on.mouseMove(x,y)	pcall(function() current_screen():mouseMove(x,y) end)  end
@@ -882,15 +882,19 @@ function Weapon:init(fromTank,weapType)
 	self.y = self.initY
 	self.weapType = weapType
 	self.range = self.v0*self.v0*math.sin(2*self.initAngle)/kGrav
+	self.maxHeight = self.v0y*self.v0y/(2*kGrav)
 end
 
-function Weapon:paint(gc)	
-    local maxHeight = self.v0y*self.v0y/(2*kGrav)
-    --print("range : ",self.range)
-    --print("maxHeight : ",maxHeight)
-    
+function Weapon:paint(gc)
     gc:drawString("•", self.initX+self.x+2, self.initY-self.y-8, "top")
     timer.start(0.01)
+end
+
+function Weapon:triche(gc)
+    for tmp=0,self.range,(self.range > 0 and 5 or -5) do
+        local tmpy = tmp * math.tan(self.initAngle) - (9.81 * tmp * tmp / (2 * self.v0 * self.v0 * math.cos(self.initAngle) * math.cos(self.initAngle)))
+        gc:drawString("°", self.initX+tmp+2, self.initY-tmpy-8, "top")
+    end
 end
 
 function Weapon:timer()
@@ -915,9 +919,13 @@ function GameScreen:paint(gc)
 	for _, tank in pairs(Tanks) do
 	    tank:paint(gc)
 	end
-	if currWeapon then
-	    currWeapon:paint(gc)
-	end
+	if currWeapon then currWeapon:paint(gc) end
+
+    if triche then 
+        tricheWeapon = Weapon(Tanks[CurrentPlayer], "tricheWeapon")
+        tricheWeapon:triche(gc)
+    end
+
 	gc:setColorRGB(255,255,255)
 	gc:drawString(Tanks[CurrentPlayer].team .. "'s turn", 1, pwh()-21, "top")
 	tmpStr1 = "Power : " .. Tanks[CurrentPlayer].cannonPower
@@ -939,7 +947,7 @@ end
 
 function GameScreen:arrowLeft()
     Tanks[CurrentPlayer].cannonAngle = Tanks[CurrentPlayer].cannonAngle <= 360 and Tanks[CurrentPlayer].cannonAngle + 5 or 0
-    if Tanks[CurrentPlayer].cannonAngle >= 360 then Tanks[CurrentPlayer].cannonAngle = 0 end 
+    if Tanks[CurrentPlayer].cannonAngle >= 360 then Tanks[CurrentPlayer].cannonAngle = 0 end
 end
 
 function GameScreen:arrowRight()
@@ -951,11 +959,13 @@ function GameScreen:charIn(ch)
 	if ch == "7" and Tanks[CurrentPlayer].movesLeft > 0 then
 		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x > 0 and Tanks[CurrentPlayer].x - 10 or Tanks[CurrentPlayer].x
 		Tanks[CurrentPlayer].movesLeft = Tanks[CurrentPlayer].movesLeft - 1
-	elseif ch == "9"and Tanks[CurrentPlayer].movesLeft > 0 then
+	elseif ch == "9" and Tanks[CurrentPlayer].movesLeft > 0 then
 		Tanks[CurrentPlayer].x = Tanks[CurrentPlayer].x < pww() and Tanks[CurrentPlayer].x + 10 or Tanks[CurrentPlayer].x
 		Tanks[CurrentPlayer].movesLeft = Tanks[CurrentPlayer].movesLeft - 1
+	elseif ch == "t" then
+	    triche = not triche
+	    tricheWeapon = Weapon(Tanks[CurrentPlayer], "tricheWeapon")
 	end
-    print(ch)
     screenRefresh()
 end
 
@@ -1060,6 +1070,7 @@ end
 -----Start !-----
 -----------------
 
+triche = false
 mustGo = true
 kXSize = 1 -- will get changed
 kYSize = 1 -- will get changed
