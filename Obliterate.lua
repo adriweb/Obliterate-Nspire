@@ -5,9 +5,8 @@
 -- "Obliterate" name from Kerm Martian (Cemetech.net)
 -- TI-Planet.org and Inspired-Lua.org
 -- BetterLuaAPI by Adriweb
--- Screen Manager by Levak
--- Screen Manager Additions 
---             with Widgets by Jim Bauwens
+-- Original Screen Manager by Levak
+-- Highly modified version by Jim Bauwens
 ----------------------------------------------------------
 
 
@@ -543,8 +542,6 @@ sButton.mouseUp	=	sButton.enterKey
 
 --------------------
 ---Screen Manager---
------ By Levak -----
---- with changes ---
 --------------------
 
 function Pr(n, d, s)
@@ -819,7 +816,7 @@ function on.mouseMove(x,y)	pcall(function() current_screen():mouseMove(x,y) end)
 
 
 -----------------
------GLOBALS:----
+----"Classes"----
 -----------------
 
 Ground = class()
@@ -831,45 +828,49 @@ Weapon = class()
 -----GROUND:-----
 -----------------
 
+-- Thanks so much Jim Bauwens for writing the algorithm I had troubles coding :P
+-- This works much better than the one I wrote :)
+-- TODO : add special cases to terrain shape depending on groundType
+
 function Ground:init(groundType)
 	self.groundType = groundType
-	self.tabley = {.55*pwh(),.6*pwh(),.65*pwh(),.5*pwh(),.55*pwh()}
-	self:generateTable()
-    print("nbr elements = ", #self.tabley)
-    self.newTable = copyTable(self.tabley)
-        for i=1,#self.tabley do
-            table.insert(self.newTable,2*i,i)
-        end
-    self.xRatio = pww()/#self.tabley
+	self.lines = self:makeTerrain({0,.5*pwh(),pww(),.5*pwh()}, 100, 0.6)
 end
 
 function Ground:paint(gc)
-    gc:setColorRGB(180,180,180)
-	for x,y in ipairs(self.tabley) do
-	    gc:drawLine(self.xRatio*kXRatio*x,y,self.xRatio*kXRatio*x+5*kXRatio, self.tabley[x+1] and self.tabley[x+1] or self.tabley[x])
-	    --gc:drawString("*",x,y,"top")
-	    --gc:drawLine(self.xRatio*kXRatio*x,y,self.xRatio*kXRatio*x
-	end
-	gc:setColorRGB(0,0,0)
+    for index, line in pairs(self.lines) do
+        gc:drawLine(line[1], line[2], line[3], line[4])
+    end
 end
 
-function Ground:generateTable()
-      for i=1, 9 do
-        for tmp=2,(#self.tabley-1 > 2 and #self.tabley-1 or 2),2 do
-            if tmp <= #self.tabley and tmp-1 > 1 then
-                table.insert(self.tabley,tmp,.5*(self.tabley[tmp-1]+self.tabley[tmp+1])+self:myRand())
-            end
-        end
-      end
-      for i=.8*#self.tabley,#self.tabley do
-          table.remove(self.tabley,i)
-      end
+function Ground:makeTerrain(bline, range, roughness)
+   local lines    = {bline}
+   local lines2    = {}
+
+   local midX, midY
+
+   for times=1, 10 do
+       for index, line in pairs(lines) do
+           midX, midY    = getMidPoint(line)
+           midY    = midY + math.random(-range, range)
+
+           table.insert(lines2, {line[1], line[2], midX, midY})
+           table.insert(lines2, {midX, midY, line[3], line[4]})
+       end
+       lines    = lines2
+       lines2    = {}
+       range    = range * (roughness*2^-roughness)
+   end
+
+   return lines
 end
 
-function Ground:myRand()
-    local count = #self.tabley
-    local res = 5*math.random(-1000/(math.pow(2,count*1.1-1)), 1000/(math.pow(2,count*1.1-1)))  -- the "3" might be changed.
-    return res
+function getMidPoint(line)
+   local xdif    = math.abs(line[3]-line[1])
+   local ydif    = math.abs(line[4]-line[2])
+   local x    = math.min(line[3], line[1]) + xdif/2
+   local y    = math.min(line[4], line[2]) + ydif/2
+   return x, y
 end
 
 -----------------
