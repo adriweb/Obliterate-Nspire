@@ -844,32 +844,32 @@ function Ground:paint(gc)
 end
 
 function Ground:makeTerrain(bline, range, roughness)
-   local lines    = {bline}
-   local lines2    = {}
+   local lines = {bline}
+   local lines2 = {}
 
    local midX, midY
 
    for times=1, 10 do
        for index, line in pairs(lines) do
-           midX, midY    = getMidPoint(line)
-           midY    = midY + math.random(-range, range)
+           midX, midY = getMidPoint(line)
+           midY = midY + math.random(-range, range)
 
            table.insert(lines2, {line[1], line[2], midX, midY})
            table.insert(lines2, {midX, midY, line[3], line[4]})
        end
-       lines    = lines2
-       lines2    = {}
-       range    = range * (roughness*2^-roughness)
+       lines = lines2
+       lines2 = {}
+       range = range * (roughness*2^-roughness)
    end
 
    return lines
 end
 
 function getMidPoint(line)
-   local xdif    = math.abs(line[3]-line[1])
-   local ydif    = math.abs(line[4]-line[2])
-   local x    = math.min(line[3], line[1]) + xdif/2
-   local y    = math.min(line[4], line[2]) + ydif/2
+   local xdif = math.abs(line[3]-line[1])
+   local ydif = math.abs(line[4]-line[2])
+   local x = math.min(line[3], line[1]) + xdif/2
+   local y = math.min(line[4], line[2]) + ydif/2
    return x, y
 end
 
@@ -964,8 +964,9 @@ function GameScreen:paint(gc)
         tricheWeapon:triche(gc)
     end
 
-	gc:setColorRGB(255,255,255)
+	gc:setColorRGB(150,0,0)
 	gc:drawString(Tanks[CurrentPlayer].team .. "'s turn", 1, pwh()-21, "top")
+    gc:setColorRGB(0,0,100)
 	tmpStr1 = "Power : " .. Tanks[CurrentPlayer].cannonPower
 	tmpStr2 = "Angle : " .. Tanks[CurrentPlayer].cannonAngle
 	gc:drawString(tmpStr1, pww()-gc:getStringWidth(tmpStr1)-2, pwh()-39, "top")
