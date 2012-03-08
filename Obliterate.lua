@@ -9,6 +9,17 @@
 -- Highly modified version by Jim Bauwens
 ----------------------------------------------------------
 
+---------------------
+-- Todo : 
+---------------------
+-- Player names input
+-- Player vs AI
+-- Weapon Types
+-- Weapon Damages on ground + tanks
+-- Continue/Restart
+-- Stats
+-- Help
+-- Colors
 
 ------------------------------------------------------------------
 --                  Overall Global Variables                    --
@@ -834,11 +845,16 @@ Weapon = class()
 
 function Ground:init(groundType)
 	self.groundType = groundType
+	self.yPoints = {} -- y coords of ground. 1024 points.
 	self.lines = self:makeTerrain({0,.5*pwh(),pww(),.5*pwh()}, 100, 0.6)
+	for index, line in pairs(self.lines) do
+    	self.yPoints[index] = line[2]
+    end
 end
 
 function Ground:paint(gc)
     for index, line in pairs(self.lines) do
+    	self.yPoints[index] = line[2]
         gc:drawLine(line[1], line[2], line[3], line[4])
     end
 end
@@ -915,6 +931,7 @@ function Weapon:init(fromTank,weapType)
 	self.weapType = weapType
 	self.range = self.v0*self.v0*math.sin(2*self.initAngle)/kGrav
 	self.maxHeight = self.v0y*self.v0y/(2*kGrav)
+	self.perfect = false
 end
 
 function Weapon:paint(gc)
@@ -932,7 +949,17 @@ end
 function Weapon:timer()
     self.x = self.x + (self.range > 0 and 5 or -5)
     self.y = self.x * math.tan(self.initAngle) - (9.81 * self.x * self.x / (2 * self.v0 * self.v0 * math.cos(self.initAngle) * math.cos(self.initAngle)))
-    if self:outOfBounds() or self:intersectsTank(Tanks[(CurrentPlayer==2 and 1 or 2)]) then timer.stop() next_turn() end
+    if self:outOfBounds() then
+    	timer.stop()
+    	next_turn()
+    end
+    if self:intersectsTank(Tanks[(CurrentPlayer==2 and 1 or 2)]) then
+    	timer.stop()
+    	self.perfect = true
+    	self:activate()
+    	self.perfect = false
+    	next_turn()
+    end
     
     screenRefresh()
 end
@@ -942,6 +969,10 @@ function Weapon:outOfBounds()
 end
 
 function Weapon:intersectsTank(tank)
+    return math.abs((self.initX+self.x+2)-tank.x)<10 and math.abs((self.initY-self.y-8)-tank.y)<9
+end
+
+function Weapon:intersectsGround()
     return math.abs((self.initX+self.x+2)-tank.x)<10 and math.abs((self.initY-self.y-8)-tank.y)<9
 end
 
